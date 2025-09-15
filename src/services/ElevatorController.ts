@@ -52,25 +52,39 @@ export class ElevatorManager {
 
   private tryMove() {
     if (this.isMoving) return;
-    if (!this.direction) this.direction = "up";
 
     let nextFloor: number;
+
     if (this.direction === "up") {
-      if (this.currentFloor < this.floors.length) {
-        nextFloor = this.currentFloor + 1;
-      } else {
+      nextFloor = this.currentFloor + 1;
+      while (
+        nextFloor <= this.floors.length &&
+        this.floors[nextFloor - 1].persons.length === 0 &&
+        !this.elevator.passengers.some((p) => p.targetFloor === nextFloor)
+      ) {
+        nextFloor++;
+      }
+      if (nextFloor > this.floors.length) {
         this.direction = "down";
         nextFloor = this.currentFloor - 1;
       }
     } else {
-      if (this.currentFloor > 1) {
-        nextFloor = this.currentFloor - 1;
-      } else {
+      nextFloor = this.currentFloor - 1;
+      while (
+        nextFloor >= 1 &&
+        this.floors[nextFloor - 1].persons.length === 0 &&
+        !this.elevator.passengers.some((p) => p.targetFloor === nextFloor)
+      ) {
+        nextFloor--;
+      }
+      if (nextFloor < 1) {
         this.direction = "up";
         nextFloor = this.currentFloor + 1;
       }
     }
 
+    if (nextFloor < 1) nextFloor = 1;
+    if (nextFloor > this.floors.length) nextFloor = this.floors.length;
     this.moveToFloor(nextFloor, () => this.handleFloor());
   }
 
