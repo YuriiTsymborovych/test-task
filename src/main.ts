@@ -7,8 +7,8 @@ import { ElevatorManager } from "./services/ElevatorController";
 
 const WIDTH = 1000;
 const BUILDING_WIDTH = 800;
-const NUM_FLOORS = 10;
-const MAX_NUM_PERSONS_IN_ELEVATOR = 4;
+const NUM_FLOORS = 6;
+const MAX_NUM_PERSONS_IN_ELEVATOR = 3;
 const FLOOR_HEIGHT = 90;
 const ELEVATOR_WIDTH = MAX_NUM_PERSONS_IN_ELEVATOR * 40;
 const BUILDING_HEIGHT = FLOOR_HEIGHT * NUM_FLOORS;
@@ -39,6 +39,7 @@ const elevatorManager = new ElevatorManager(
   MAX_NUM_PERSONS_IN_ELEVATOR,
   FLOOR_HEIGHT,
 );
+elevatorManager.start();
 
 new PersonManager(
   building.floors,

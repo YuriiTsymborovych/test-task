@@ -68,8 +68,6 @@ export class PersonManager {
     person.setPosition(startX, startY);
     this.floors[floorIndex].addPerson(person);
 
-    person.moveTo(queueX, queueY, this.tweenGroup, () => {
-      this.elevatorManager.tryMove();
-    });
+    person.moveTo(queueX, queueY, this.tweenGroup, () => {});
   }
 }

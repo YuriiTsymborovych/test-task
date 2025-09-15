@@ -1,13 +1,13 @@
 import * as PIXI from "pixi.js";
 import { Elevator } from "../models/Elevator";
 import { Floor } from "../models/Floor";
-import { Group, Tween } from "@tweenjs/tween.js";
+import { Group, Tween, Easing } from "@tweenjs/tween.js";
 
 export class ElevatorManager {
   private elevator: Elevator;
   private floors: Floor[];
   private tweenGroup: Group;
-  private direction: "up" | "down" | null = null;
+  private direction: "up" | "down" = "up";
   private currentFloor: number = 1;
   private isMoving: boolean = false;
 
@@ -23,8 +23,11 @@ export class ElevatorManager {
     this.tweenGroup = tweenGroup;
   }
 
+  public start() {
+    if (!this.isMoving) this.tryMove();
+  }
+
   private moveToFloor(floorNumber: number, onComplete?: () => void) {
-    if (this.isMoving) return;
     this.isMoving = true;
 
     const floorsHeight = this.floors.length * this.floorHeight;
@@ -34,10 +37,11 @@ export class ElevatorManager {
       this.floorHeight;
 
     const distance = Math.abs(this.currentFloor - floorNumber);
-    const speed = distance * 1000;
+    const duration = Math.max(1, distance) * 1000;
 
     new Tween(this.elevator.container, this.tweenGroup)
-      .to({ y }, speed)
+      .to({ y }, duration)
+      .easing(Easing.Linear.None)
       .onComplete(() => {
         this.currentFloor = floorNumber;
         this.isMoving = false;
@@ -46,162 +50,120 @@ export class ElevatorManager {
       .start();
   }
 
-  public tryMove() {
+  private tryMove() {
     if (this.isMoving) return;
+    if (!this.direction) this.direction = "up";
 
-    if (this.elevator.passengers.length === 0) {
-      const floor = this.floors[this.currentFloor - 1];
-      if (floor.persons.length === 0) {
-        const nextFloorInfo = this.getFirstWaitingPerson();
-        if (!nextFloorInfo) return;
-        this.currentFloor = nextFloorInfo.floorNumber;
-        this.direction =
-          nextFloorInfo.person.targetFloor > nextFloorInfo.floorNumber
-            ? "up"
-            : "down";
+    let nextFloor: number;
+    if (this.direction === "up") {
+      if (this.currentFloor < this.floors.length) {
+        nextFloor = this.currentFloor + 1;
       } else {
-        const firstPerson = floor.persons[0];
-        this.direction =
-          firstPerson.targetFloor > this.currentFloor ? "up" : "down";
+        this.direction = "down";
+        nextFloor = this.currentFloor - 1;
       }
-      this.handleFloor();
-      return;
+    } else {
+      if (this.currentFloor > 1) {
+        nextFloor = this.currentFloor - 1;
+      } else {
+        this.direction = "up";
+        nextFloor = this.currentFloor + 1;
+      }
     }
 
-    const nextFloor = this.getNextFloor();
-    if (nextFloor !== null) {
-      this.moveToFloor(nextFloor, () => this.handleFloor());
-    }
+    this.moveToFloor(nextFloor, () => this.handleFloor());
   }
 
   private handleFloor() {
     const floor = this.floors[this.currentFloor - 1];
 
-    this.elevator.passengers = this.elevator.passengers.filter((person) => {
-      if (person.targetFloor === this.currentFloor) {
-        person.leaveElevator(this.tweenGroup, () => {
-          if (this.elevator.container.parent) {
-            const globalPos = this.elevator.container.toGlobal(
-              person.container.position,
-            );
-            floor.container.addChild(person.container);
-            const localPos = floor.container.toLocal(globalPos);
-            person.container.position.set(localPos.x, localPos.y);
-            person.container.destroy();
-          }
-          this.updatePassengerPositions();
-        });
-        return false;
-      }
-      return true;
-    });
-
-    const waiting = floor.persons.filter(
-      (person) => person.direction === this.direction,
+    const exiting = this.elevator.passengers.filter(
+      (person) => person.targetFloor === this.currentFloor,
     );
 
-    for (const person of waiting) {
-      if (this.elevator.passengers.length >= this.elevatorCapacity) break;
-      floor.removePerson(person, this.tweenGroup);
+    if (exiting.length > 0) {
+      this.elevator.passengers = this.elevator.passengers.filter(
+        (person) => person.targetFloor !== this.currentFloor,
+      );
+    }
 
-      person.enterElevator(this.tweenGroup, () => {
-        if (person.container.parent) {
-          const globalPos = person.container.parent.toGlobal(
-            person.container.position,
-          );
+    exiting.forEach((person) => {
+      person.leaveElevator(this.tweenGroup, () => {
+        const globalPos = person.container.getGlobalPosition();
+        floor.container.addChild(person.container);
+        const localPos = floor.container.toLocal(globalPos);
+        person.container.position.set(localPos.x, localPos.y);
 
-          this.elevator.container.addChild(person.container);
+        person.container.destroy();
+      });
+    });
+    this.updatePassengerPositions();
 
-          const localPos = this.elevator.container.toLocal(globalPos);
-          person.container.position.set(localPos.x, localPos.y);
-        }
+    const waiting = floor.persons;
+    if (this.elevator.passengers.length === 0 && waiting.length > 0) {
+      const first = waiting[0];
+      this.direction = first.targetFloor > this.currentFloor ? "up" : "down";
+    }
+
+    const waitingInDirection = waiting.filter(
+      (person) =>
+        (person.targetFloor > this.currentFloor ? "up" : "down") ===
+        this.direction,
+    );
+
+    const freeSlots = this.elevatorCapacity - this.elevator.passengers.length;
+    const toEnter = Math.min(waitingInDirection.length, Math.max(0, freeSlots));
+
+    if (toEnter > 0) {
+      const entering = waitingInDirection.slice(0, toEnter);
+
+      entering.forEach((p) => {
+        floor.removePerson(p, this.tweenGroup);
       });
 
-      this.elevator.passengers.push(person);
-      this.updatePassengerPositions();
+      entering.forEach((person) => {
+        person.enterElevator(this.tweenGroup, () => {
+          const globalPos = person.container.getGlobalPosition();
+          this.elevator.container.addChild(person.container);
+          const localPos = this.elevator.container.toLocal(globalPos);
+          person.container.position.set(localPos.x, localPos.y);
 
-      const index = floor.persons.indexOf(person);
-      if (index !== -1) floor.persons.splice(index, 1);
+          this.elevator.passengers.push(person);
+          this.updatePassengerPositions();
+        });
+      });
     }
 
-    if (this.elevator.passengers.length === 0 && floor.persons.length > 0) {
-      const firstPerson = floor.persons[0];
-      this.direction =
-        firstPerson.targetFloor > this.currentFloor ? "up" : "down";
-    }
-
-    if (this.currentFloor === this.floors.length && this.direction === "up") {
-      this.direction = "down";
-    } else if (this.currentFloor === 1 && this.direction === "down") {
-      this.direction = "up";
-    }
-    this.delay(800, () => this.tryMove());
-  }
-
-  private getNextFloor(): number | null {
-    if (!this.direction) return null;
-
-    const dir = this.direction;
-
-    const targetFloors = [
-      ...this.elevator.passengers.map((person) => person.targetFloor),
-      ...this.floors
-        .map((floor, index) => index + 1)
-        .filter((floorNumber) => {
-          const floor = this.floors[floorNumber - 1];
-          return (
-            floor.persons.some((person) => person.direction === dir) &&
-            floorNumber !== this.currentFloor
-          );
-        }),
-    ];
-
-    if (targetFloors.length === 0) return null;
-
-    if (dir === "up") {
-      const above = targetFloors.filter((floor) => floor > this.currentFloor);
-      return above.length > 0 ? Math.min(...above) : null;
-    } else {
-      const below = targetFloors.filter((floor) => floor < this.currentFloor);
-      return below.length > 0 ? Math.max(...below) : null;
-    }
-  }
-
-  private getFirstWaitingPerson() {
-    for (let i = 0; i < this.floors.length; i++) {
-      const floor = this.floors[i];
-      if (floor.persons.length > 0) {
-        return { person: floor.persons[0], floorNumber: i + 1 };
+    this.delay(800, () => {
+      if (this.elevator.passengers.length === 0) {
+        if (this.currentFloor === this.floors.length) {
+          this.direction = "down";
+        } else if (this.currentFloor === 1) {
+          this.direction = "up";
+        }
       }
-    }
-    return null;
+
+      this.tryMove();
+    });
   }
 
-  private delay(ms: number, callback: () => void) {
+  private delay(ms: number, callback?: () => void) {
     let elapsed = 0;
-
     const tick = (ticker: PIXI.Ticker) => {
       elapsed += ticker.deltaMS;
       if (elapsed >= ms) {
         PIXI.Ticker.shared.remove(tick);
-        callback();
+        if (callback) callback();
       }
     };
-
     PIXI.Ticker.shared.add(tick);
   }
 
   private updatePassengerPositions() {
     this.elevator.passengers.forEach((person, i) => {
-      const posX = i * 31;
+      const posX = i * 33;
       const posY = 45;
-
       person.moveTo(posX, posY, this.tweenGroup);
     });
-  }
-
-  public setCapacity(newCapacity: number) {
-    this.elevatorCapacity = newCapacity;
-    this.updatePassengerPositions();
   }
 }

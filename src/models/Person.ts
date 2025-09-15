@@ -56,7 +56,7 @@ export class Person {
 
   public leaveElevator(group: Group, onComplete?: () => void) {
     new Tween(this.container, group)
-      .to({ x: 750 }, 800)
+      .to({ x: 750 }, 600)
       .easing(Easing.Quadratic.Out)
       .onComplete(() => {
         if (onComplete) onComplete();
@@ -66,7 +66,7 @@ export class Person {
 
   public enterElevator(group: Group, onComplete?: () => void) {
     new Tween(this.container, group)
-      .to({ x: 0 }, 800)
+      .to({ x: 0 }, 600)
       .easing(Easing.Quadratic.Out)
       .onComplete(() => {
         if (onComplete) onComplete();
