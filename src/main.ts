@@ -57,14 +57,14 @@ function initApp() {
     elevatorManager,
   );
 
-  const floorsButton = new UIButton("Floors", 100, 40, () => {
+  const floorsButton = new UIButton("Floors", 100, 40, NUM_FLOORS, () => {
     NUM_FLOORS = NUM_FLOORS >= 10 ? 4 : NUM_FLOORS + 1;
     rebuildApp();
   });
   floorsButton.position.set(350, BUILDING_HEIGHT + floorsButton.height + 40);
   app.stage.addChild(floorsButton);
 
-  const capacityButton = new UIButton("Capacity", 100, 40, () => {
+  const capacityButton = new UIButton("Capacity", 100, 40, MAX_NUM_PERSONS_IN_ELEVATOR, () => {
     MAX_NUM_PERSONS_IN_ELEVATOR =
       MAX_NUM_PERSONS_IN_ELEVATOR >= 4 ? 2 : MAX_NUM_PERSONS_IN_ELEVATOR + 1;
     rebuildApp();

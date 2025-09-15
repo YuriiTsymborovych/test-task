@@ -3,11 +3,13 @@ import * as PIXI from "pixi.js";
 export class UIButton extends PIXI.Container {
   private background: PIXI.Graphics;
   private textLabel: PIXI.Text;
+  private valueLabel: PIXI.Text;
 
   constructor(
     text: string,
     width: number,
     height: number,
+    updatedValue: number,
     onClick: () => void,
   ) {
     super();
@@ -29,6 +31,17 @@ export class UIButton extends PIXI.Container {
     this.textLabel.anchor.set(0.5);
     this.textLabel.position.set(width / 2, height / 2);
     this.addChild(this.textLabel);
+
+    this.valueLabel = new PIXI.Text(updatedValue.toString(), {
+      fontFamily: "Arial",
+      fontSize: 14,
+      fill: 0xffff00,
+      align: "center",
+    });
+    this.valueLabel.anchor.set(0.5, 0.5);
+    this.valueLabel.position.set(width - 10, height / 2);
+    this.addChild(this.valueLabel);
+
     this.eventMode = "static";
     this.cursor = "pointer";
 
