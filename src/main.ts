@@ -64,11 +64,17 @@ function initApp() {
   floorsButton.position.set(350, BUILDING_HEIGHT + floorsButton.height + 40);
   app.stage.addChild(floorsButton);
 
-  const capacityButton = new UIButton("Capacity", 100, 40, MAX_NUM_PERSONS_IN_ELEVATOR, () => {
-    MAX_NUM_PERSONS_IN_ELEVATOR =
-      MAX_NUM_PERSONS_IN_ELEVATOR >= 4 ? 2 : MAX_NUM_PERSONS_IN_ELEVATOR + 1;
-    rebuildApp();
-  });
+  const capacityButton = new UIButton(
+    "Capacity",
+    100,
+    40,
+    MAX_NUM_PERSONS_IN_ELEVATOR,
+    () => {
+      MAX_NUM_PERSONS_IN_ELEVATOR =
+        MAX_NUM_PERSONS_IN_ELEVATOR >= 4 ? 2 : MAX_NUM_PERSONS_IN_ELEVATOR + 1;
+      rebuildApp();
+    },
+  );
   capacityButton.position.set(
     500,
     BUILDING_HEIGHT + capacityButton.height + 40,
